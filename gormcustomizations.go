@@ -1,12 +1,22 @@
 package gormabs
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
+
+type CacheOptions struct {
+	CheckCache bool
+	TTL        time.Duration
+	Client     *redis.Client
+}
 
 type IModel interface {
 	GetTable() string
@@ -83,22 +93,64 @@ func GormSearch(queryParams map[string][]string, query *gorm.DB) (q *gorm.DB, er
 	return
 }
 
-func SearchOne(parameters map[string][]string, database *gorm.DB, model IModel, output *any) error {
+func SearchOne(parameters map[string][]string, database *gorm.DB, model IModel, output *any, opts CacheOptions) error {
+	key := model.GetTable()
+	for key := range parameters {
+		key += fmt.Sprintf("|%s,%s", key, parameters[key][0])
+	}
+	if opts.CheckCache {
+		res, err := opts.Client.Get(context.Background(), key).Result()
+		err2 := json.Unmarshal([]byte(res), output)
+		if err == nil && err2 == nil {
+			return err
+		}
+	}
 	query := database.Table(model.GetTable())
 	err := SelectQueryBuilder(query, parameters)
 	if err != nil {
 		return err
 	}
 	err = query.First(output).Error
+	if opts.CheckCache {
+		trxb, err := json.Marshal(output)
+		if err != nil {
+			return err
+		}
+		err = opts.Client.Set(context.Background(), key, trxb, time.Hour).Err()
+		if err != nil {
+			return nil
+		}
+	}
 	return err
 }
 
-func SearchMulti(parameters map[string][]string, database *gorm.DB, model IModel, output *any) (err error) {
+func SearchMulti(parameters map[string][]string, database *gorm.DB, model IModel, output *any, opts CacheOptions) (err error) {
+	key := model.GetTable()
+	for key := range parameters {
+		key += fmt.Sprintf("|%s,%s", key, parameters[key][0])
+	}
+	if opts.CheckCache {
+		res, err := opts.Client.Get(context.Background(), key).Result()
+		err2 := json.Unmarshal([]byte(res), output)
+		if err == nil && err2 == nil {
+			return err
+		}
+	}
 	query := database.Table(model.GetTable())
 	err = SelectQueryBuilder(query, parameters)
 	if err != nil {
 		return
 	}
 	err = query.Find(output).Error
+	if opts.CheckCache {
+		trxb, err := json.Marshal(output)
+		if err != nil {
+			return err
+		}
+		err = opts.Client.Set(context.Background(), key, trxb, time.Hour).Err()
+		if err != nil {
+			return nil
+		}
+	}
 	return
 }
