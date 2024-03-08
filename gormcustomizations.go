@@ -25,11 +25,11 @@ type IModel interface {
 func SelectQueryBuilder(query *gorm.DB, parameters map[string][]string) (err error) {
 
 	query, err = GormSearch(parameters, query)
-	if orderby, isorderd := parameters["orderby"]; isorderd {
-		query = query.Order(orderby)
-	}
 	if err != nil {
 		return
+	}
+	if orderby, isorderd := parameters["orderby"]; isorderd {
+		query = query.Order(orderby[0])
 	}
 
 	pagestr, ispage := parameters["page"]
@@ -83,7 +83,7 @@ func GormSearch(queryParams map[string][]string, query *gorm.DB) (q *gorm.DB, er
 				return
 			}
 
-			query.Where(fmt.Sprintf("%s <= ? AND %s >= ?", columnName, columnName), rangeBtwn[0], rangeBtwn[1])
+			query.Where(fmt.Sprintf("%s >= ? AND %s < ?", columnName, columnName), rangeBtwn[0], rangeBtwn[1])
 		default:
 			continue
 
@@ -93,7 +93,7 @@ func GormSearch(queryParams map[string][]string, query *gorm.DB) (q *gorm.DB, er
 	return
 }
 
-func SearchOne(parameters map[string][]string, database *gorm.DB, model IModel, output *any, opts CacheOptions) error {
+func SearchOne(parameters map[string][]string, database *gorm.DB, model IModel, output any, opts CacheOptions) (err error) {
 	key := model.GetTable()
 	for key := range parameters {
 		key += fmt.Sprintf("|%s,%s", key, parameters[key][0])
@@ -106,11 +106,14 @@ func SearchOne(parameters map[string][]string, database *gorm.DB, model IModel, 
 		}
 	}
 	query := database.Table(model.GetTable())
-	err := SelectQueryBuilder(query, parameters)
+	err = SelectQueryBuilder(query, parameters)
 	if err != nil {
 		return err
 	}
 	err = query.First(output).Error
+	if err != nil {
+		return err
+	}
 	if opts.CheckCache {
 		trxb, err := json.Marshal(output)
 		if err != nil {
@@ -124,7 +127,7 @@ func SearchOne(parameters map[string][]string, database *gorm.DB, model IModel, 
 	return err
 }
 
-func SearchMulti(parameters map[string][]string, database *gorm.DB, model IModel, output *any, opts CacheOptions) (err error) {
+func SearchMulti(parameters map[string][]string, database *gorm.DB, model IModel, output any, opts CacheOptions) (err error) {
 	key := model.GetTable()
 	for key := range parameters {
 		key += fmt.Sprintf("|%s,%s", key, parameters[key][0])
@@ -142,6 +145,9 @@ func SearchMulti(parameters map[string][]string, database *gorm.DB, model IModel
 		return
 	}
 	err = query.Find(output).Error
+	if err != nil {
+		return
+	}
 	if opts.CheckCache {
 		trxb, err := json.Marshal(output)
 		if err != nil {
