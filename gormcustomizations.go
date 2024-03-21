@@ -139,3 +139,17 @@ func SearchMulti(parameters map[string][]string, database *gorm.DB, model IModel
 	}
 	return
 }
+
+func Count(parameters map[string][]string, database *gorm.DB, model IModel) (count int64) {
+	// Remove the pagination params
+	query := database.Table(model.GetTable())
+	query, err := GormSearch(parameters, query)
+	if err != nil {
+		return
+	}
+	err = query.Count(&count).Error
+	if err != nil {
+		return
+	}
+	return
+}
