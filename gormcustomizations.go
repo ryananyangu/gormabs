@@ -1,8 +1,6 @@
 package gormabs
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -16,10 +14,6 @@ type CacheOptions struct {
 	CheckCache bool
 	TTL        time.Duration
 	Client     *redis.Client
-}
-
-type IModel interface {
-	GetTable() string
 }
 
 func SelectQueryBuilder(query *gorm.DB, parameters map[string][]string) (err error) {
@@ -93,19 +87,9 @@ func GormSearch(queryParams map[string][]string, query *gorm.DB) (q *gorm.DB, er
 	return
 }
 
-func SearchOne(parameters map[string][]string, database *gorm.DB, model IModel, output any, opts CacheOptions) (err error) {
-	key := model.GetTable()
-	for key := range parameters {
-		key += fmt.Sprintf("|%s,%s", key, parameters[key][0])
-	}
-	if opts.CheckCache {
-		res, err := opts.Client.Get(context.Background(), key).Result()
-		err2 := json.Unmarshal([]byte(res), output)
-		if err == nil && err2 == nil {
-			return err
-		}
-	}
-	query := database.Table(model.GetTable())
+func SearchOne(parameters map[string][]string, database *gorm.DB, output any) (err error) {
+
+	query := database.Model(output)
 	err = SelectQueryBuilder(query, parameters)
 	if err != nil {
 		return err
@@ -114,21 +98,11 @@ func SearchOne(parameters map[string][]string, database *gorm.DB, model IModel, 
 	if err != nil {
 		return err
 	}
-	if opts.CheckCache {
-		trxb, err := json.Marshal(output)
-		if err != nil {
-			return err
-		}
-		err = opts.Client.Set(context.Background(), key, trxb, time.Hour).Err()
-		if err != nil {
-			return nil
-		}
-	}
 	return err
 }
 
-func SearchMulti(parameters map[string][]string, database *gorm.DB, model IModel, output any) (err error) {
-	query := database.Table(model.GetTable())
+func SearchMulti(parameters map[string][]string, database *gorm.DB, output any) (err error) {
+	query := database.Model(output)
 	err = SelectQueryBuilder(query, parameters)
 	if err != nil {
 		return

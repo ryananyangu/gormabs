@@ -8,14 +8,11 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/alicebob/miniredis/v2"
-	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/driver/sqlite"
 )
 
 var database *gorm.DB
-var redis_c *redis.Client
 
 type User struct {
 	ID        uint      `json:"id" gorm:"column:id" binding:"required"`
@@ -30,13 +27,6 @@ func (u User) GetTable() string {
 }
 
 func setup() {
-	mr, err := miniredis.Run()
-	if err != nil {
-		return
-	}
-	redis_c = redis.NewClient(&redis.Options{
-		Addr: mr.Addr(),
-	})
 	// NOTE: Database setup
 	db, err := gorm.Open(sqlite.Open("file:memdb1?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
@@ -101,96 +91,96 @@ func TestPersistance(t *testing.T) {
 }
 func TestSearchOne(t *testing.T) {
 	user := User{}
-	err := SearchOne(map[string][]string{"eq__lastname": {"two"}}, database, User{}, &user, CacheOptions{CheckCache: false})
+	err := SearchOne(map[string][]string{"eq__lastname": {"two"}}, database, &user)
 	assert.NoError(t, err)
 	assert.Equal(t, "test", user.FirstName, "they should be equal")
 }
 
 func TestSearchMulti(t *testing.T) {
 	users := []User{}
-	err := SearchMulti(map[string][]string{"like__lastname": {"t"}}, database, User{}, &users)
+	err := SearchMulti(map[string][]string{"like__lastname": {"t"}}, database, &users)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(users), "they should be equal")
 }
 
 func TestSearchMultiIn(t *testing.T) {
 	users := []User{}
-	err := SearchMulti(map[string][]string{"in__id": {"1,2"}}, database, User{}, &users)
+	err := SearchMulti(map[string][]string{"in__id": {"1,2"}}, database, &users)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(users), "they should be equal")
 }
 
 func TestSearchMultiLt(t *testing.T) {
 	users := []User{}
-	err := SearchMulti(map[string][]string{"lt__id": {"2"}}, database, User{}, &users)
+	err := SearchMulti(map[string][]string{"lt__id": {"2"}}, database, &users)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(users), "they should be equal")
 }
 
 func TestSearchMultiLte(t *testing.T) {
 	users := []User{}
-	err := SearchMulti(map[string][]string{"lte__id": {"2"}}, database, User{}, &users)
+	err := SearchMulti(map[string][]string{"lte__id": {"2"}}, database, &users)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(users), "they should be equal")
 }
 
 func TestSearchMultiPagination(t *testing.T) {
 	users := []User{}
-	err := SearchMulti(map[string][]string{"page": {"1"}, "size": {"1"}}, database, User{}, &users)
+	err := SearchMulti(map[string][]string{"page": {"1"}, "size": {"1"}}, database, &users)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(users), "they should be equal")
 }
 func TestSearchMultiPaginationError(t *testing.T) {
 	users := []User{}
-	err := SearchMulti(map[string][]string{"page": {"a"}, "size": {"b"}}, database, User{}, &users)
+	err := SearchMulti(map[string][]string{"page": {"a"}, "size": {"b"}}, database, &users)
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(users), "they should be equal")
 }
 func TestSearchMultiOrderBy(t *testing.T) {
 	users := []User{}
-	err := SearchMulti(map[string][]string{"lte__id": {"2"}, "orderby": {"id DESC"}}, database, User{}, &users)
+	err := SearchMulti(map[string][]string{"lte__id": {"2"}, "orderby": {"id DESC"}}, database, &users)
 	assert.NoError(t, err)
 	assert.Equal(t, uint(2), users[0].ID, "they should be equal")
 }
 
 func TestSearchMultiGte(t *testing.T) {
 	users := []User{}
-	err := SearchMulti(map[string][]string{"gte__id": {"2"}}, database, User{}, &users)
+	err := SearchMulti(map[string][]string{"gte__id": {"2"}}, database, &users)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(users), "they should be equal")
 }
 
 func TestSearchMultiGt(t *testing.T) {
 	users := []User{}
-	err := SearchMulti(map[string][]string{"gt__id": {"2"}}, database, User{}, &users)
+	err := SearchMulti(map[string][]string{"gt__id": {"2"}}, database, &users)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(users), "they should be equal")
 }
 
 func TestSearchMultiBtwn(t *testing.T) {
 	users := []User{}
-	err := SearchMulti(map[string][]string{"btwn__createdat": {"2024-03-01 07:00:00,2024-03-01 09:00:00"}}, database, User{}, &users)
+	err := SearchMulti(map[string][]string{"btwn__createdat": {"2024-03-01 07:00:00,2024-03-01 09:00:00"}}, database, &users)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(users), "they should be equal")
 }
 
 func TestSearchMultiBtwnErr(t *testing.T) {
 	users := []User{}
-	err := SearchMulti(map[string][]string{"btwn__createdat": {"2024-03-01 09:00:00"}}, database, User{}, &users)
+	err := SearchMulti(map[string][]string{"btwn__createdat": {"2024-03-01 09:00:00"}}, database, &users)
 	assert.Error(t, err)
 }
 func TestSearchMultiInvalidParam(t *testing.T) {
 	users := []User{}
-	err := SearchMulti(map[string][]string{"nggn__createdat": {"2024-03-01 09:00:00"}}, database, User{}, &users)
+	err := SearchMulti(map[string][]string{"nggn__createdat": {"2024-03-01 09:00:00"}}, database, &users)
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(users), "they should be equal")
 }
 
 func TestSearchOneCache(t *testing.T) {
 	user := User{}
-	err := SearchOne(map[string][]string{"eq__id": {"1"}}, database, User{}, &user, CacheOptions{CheckCache: true, TTL: time.Second, Client: redis_c})
+	err := SearchOne(map[string][]string{"eq__id": {"1"}}, database, &user)
 	assert.NoError(t, err)
-	err = SearchOne(map[string][]string{"eq__id": {"1"}}, database, User{}, &user, CacheOptions{CheckCache: true, TTL: time.Second, Client: redis_c})
+	err = SearchOne(map[string][]string{"eq__id": {"1"}}, database, &user)
 	assert.NoError(t, err)
 	assert.Equal(t, "test1", user.Username, "they should be equal")
 }
