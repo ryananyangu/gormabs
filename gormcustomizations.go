@@ -101,15 +101,29 @@ func SearchOne(parameters map[string][]string, database *gorm.DB, output any) (e
 	return err
 }
 
-func SearchMulti(parameters map[string][]string, database *gorm.DB, output any) (err error) {
-	query := database.Model(output)
-	err = SelectQueryBuilder(query, parameters)
-	if err != nil {
-		return
-	}
-	err = query.Find(output).Error
-	if err != nil {
-		return
-	}
+func SearchMulti(parameters map[string][]string, database *gorm.DB, output any) (count int64, err error) {
+	err = database.Transaction(func(tx *gorm.DB) error {
+		// Get the total count of items
+		query := tx.Model(output)
+		err = SelectQueryBuilder(query, parameters)
+		if err != nil {
+			return err
+		}
+		err = query.Find(output).Error
+		if err != nil {
+			return err
+		}
+
+		queryCount := tx.Model(output)
+		queryCount, err = GormSearch(parameters, queryCount)
+		if err != nil {
+			return err
+		}
+		err = queryCount.Count(&count).Error
+		if err != nil {
+			return err
+		}
+		return nil
+	})
 	return
 }

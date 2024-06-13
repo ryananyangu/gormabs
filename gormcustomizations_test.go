@@ -98,82 +98,82 @@ func TestSearchOne(t *testing.T) {
 
 func TestSearchMulti(t *testing.T) {
 	users := []User{}
-	err := SearchMulti(map[string][]string{"like__lastname": {"t"}}, database, &users)
+	_, err := SearchMulti(map[string][]string{"like__lastname": {"t"}}, database, &users)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(users), "they should be equal")
 }
 
 func TestSearchMultiIn(t *testing.T) {
 	users := []User{}
-	err := SearchMulti(map[string][]string{"in__id": {"1,2"}}, database, &users)
+	_, err := SearchMulti(map[string][]string{"in__id": {"1,2"}}, database, &users)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(users), "they should be equal")
 }
 
 func TestSearchMultiLt(t *testing.T) {
 	users := []User{}
-	err := SearchMulti(map[string][]string{"lt__id": {"2"}}, database, &users)
+	_, err := SearchMulti(map[string][]string{"lt__id": {"2"}}, database, &users)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(users), "they should be equal")
 }
 
 func TestSearchMultiLte(t *testing.T) {
 	users := []User{}
-	err := SearchMulti(map[string][]string{"lte__id": {"2"}}, database, &users)
+	_, err := SearchMulti(map[string][]string{"lte__id": {"2"}}, database, &users)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(users), "they should be equal")
 }
 
 func TestSearchMultiPagination(t *testing.T) {
 	users := []User{}
-	err := SearchMulti(map[string][]string{"page": {"1"}, "size": {"1"}}, database, &users)
+	_, err := SearchMulti(map[string][]string{"page": {"1"}, "size": {"1"}}, database, &users)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(users), "they should be equal")
 }
 func TestSearchMultiPaginationError(t *testing.T) {
 	users := []User{}
-	err := SearchMulti(map[string][]string{"page": {"a"}, "size": {"b"}}, database, &users)
+	_, err := SearchMulti(map[string][]string{"page": {"a"}, "size": {"b"}}, database, &users)
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(users), "they should be equal")
 }
 func TestSearchMultiOrderBy(t *testing.T) {
 	users := []User{}
-	err := SearchMulti(map[string][]string{"lte__id": {"2"}, "orderby": {"id DESC"}}, database, &users)
+	_, err := SearchMulti(map[string][]string{"lte__id": {"2"}, "orderby": {"id DESC"}}, database, &users)
 	assert.NoError(t, err)
 	assert.Equal(t, uint(2), users[0].ID, "they should be equal")
 }
 
 func TestSearchMultiGte(t *testing.T) {
 	users := []User{}
-	err := SearchMulti(map[string][]string{"gte__id": {"2"}}, database, &users)
+	count, err := SearchMulti(map[string][]string{"gte__id": {"2"}}, database, &users)
 	assert.NoError(t, err)
-	assert.Equal(t, 3, len(users), "they should be equal")
+	assert.Equal(t, 3, int(count), "they should be equal")
 }
 
 func TestSearchMultiGt(t *testing.T) {
 	users := []User{}
-	err := SearchMulti(map[string][]string{"gt__id": {"2"}}, database, &users)
+	count, err := SearchMulti(map[string][]string{"gt__id": {"2"}}, database, &users)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(users), "they should be equal")
+	assert.Equal(t, 2, int(count), "they should be equal")
 }
 
 func TestSearchMultiBtwn(t *testing.T) {
 	users := []User{}
-	err := SearchMulti(map[string][]string{"btwn__createdat": {"2024-03-01 07:00:00,2024-03-01 09:00:00"}}, database, &users)
+	count, err := SearchMulti(map[string][]string{"btwn__createdat": {"2024-03-01 07:00:00,2024-03-01 09:00:00"}}, database, &users)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(users), "they should be equal")
+	assert.Equal(t, 2, int(count), "they should be equal")
 }
 
 func TestSearchMultiBtwnErr(t *testing.T) {
 	users := []User{}
-	err := SearchMulti(map[string][]string{"btwn__createdat": {"2024-03-01 09:00:00"}}, database, &users)
+	_, err := SearchMulti(map[string][]string{"btwn__createdat": {"2024-03-01 09:00:00"}}, database, &users)
 	assert.Error(t, err)
 }
 func TestSearchMultiInvalidParam(t *testing.T) {
 	users := []User{}
-	err := SearchMulti(map[string][]string{"nggn__createdat": {"2024-03-01 09:00:00"}}, database, &users)
+	count, err := SearchMulti(map[string][]string{"nggn__createdat": {"2024-03-01 09:00:00"}}, database, &users)
 	assert.NoError(t, err)
-	assert.Equal(t, 4, len(users), "they should be equal")
+	assert.Equal(t, 4, int(count), "they should be equal")
 }
 
 func TestSearchOneCache(t *testing.T) {
